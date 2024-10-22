@@ -1,0 +1,9 @@
+Moments_in_Time_Raw/
+MiT_dataset/
+LLaVa/
+archive llava1.5/
+archive llama/
+archive/
+__pycache__/
+social_data/
+*.csv
