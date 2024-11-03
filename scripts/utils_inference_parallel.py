@@ -6,7 +6,7 @@ from tqdm import tqdm
 import os
 import numpy as np
 import torch
-from utils import find_videos, video2images, find_video_path
+from scripts.utils import find_videos, video2images, find_video_path
 from pprint import pprint
 from PIL import Image
 import base64
@@ -128,16 +128,6 @@ def image2base64(image, format="JPEG"):
 
 
 
-
-
-
-
-
-
-
-
-
-
 import concurrent.futures
 import os
 import time
@@ -149,7 +139,7 @@ import pandas as pd
 csv_lock = threading.Lock()
 
 # Assuming OpenAI allows 60 requests per minute (1 request per second)
-rate_limit = 20  # OpenAI API limit: 60 requests per minute
+rate_limit = 20  # OpenAI API limit: x requests per minute
 semaphore = threading.Semaphore(rate_limit)  # Semaphore to limit requests
 
 def openai_process_videos_multiple_parallel(
@@ -159,8 +149,9 @@ def openai_process_videos_multiple_parallel(
     prompt, 
     output_csv_file=None, 
     model="gpt-4o-2024-08-06",
-    num_frames=3,  # Add num_frames as a parameter to control number of frames
-    verbose=False
+    num_frames=3,
+    verbose=False,
+    rate_limit=60
 ):
     """
     Function to process videos, perform inference on selected frames, and store the results in a CSV file.
@@ -176,8 +167,14 @@ def openai_process_videos_multiple_parallel(
     - verbose: If True, displays images and prints additional debug information.
     
     Returns:
-    - df: A DataFrame containing the last processed video result.
+    - updated_df: The updated DataFrame with all processed results.
     """
+
+    # Load the existing CSV file if it exists
+    if output_csv_file and os.path.isfile(output_csv_file):
+        existing_df = pd.read_csv(output_csv_file)
+    else:
+        existing_df = pd.DataFrame()
 
     # Helper function to process each video
     def process_video(video):
@@ -198,41 +195,45 @@ def openai_process_videos_multiple_parallel(
             semaphore.release()  # Release semaphore after processing
 
         # Create a DataFrame to store the result for the current video
-        df = pd.DataFrame({
+        new_data = pd.DataFrame({
             'video_name': [os.path.basename(video)],  # Extract the file name
             'model': model,
             'question_name': question_type,
             'question': prompt,
-            'model_response': model_response
+            'model_response_'+question_type: model_response
         })
 
-        # Ensure only one thread writes to the CSV file at a time
-        with csv_lock:
-            if output_csv_file is not None:
-                if not os.path.isfile(output_csv_file):
-                    # Write the file with headers if it doesn't exist
-                    df.to_csv(output_csv_file, index=False, mode='w')
-                else:
-                    # Append the result without headers if the file exists
-                    df.to_csv(output_csv_file, index=False, mode='a', header=False)
-        
-        return df
+        return new_data
 
     # Process videos in parallel using ThreadPoolExecutor
-    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+    processed_data = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=120) as executor:
         futures = [executor.submit(process_video, video) for video in videos_path]
-        results = []
 
         # Show progress using tqdm
         for future in tqdm(concurrent.futures.as_completed(futures), total=len(videos_path), desc="Processing Videos"):
             try:
-                result = future.result()  # Get result from future
-                results.append(result)
+                processed_data.append(future.result())
             except Exception as e:
                 print(f"Error processing video: {e}")
     
-    # Return the DataFrame containing the last processed video's result
-    if results:
-        return results[-1]
+    # Combine all processed data into a single DataFrame
+    processed_df = pd.concat(processed_data, ignore_index=True)
+
+    if not existing_df.empty:
+        # Drop rows from existing_df where 'video_name' matches any in processed_df
+        existing_df = existing_df[~existing_df['video_name'].isin(processed_df['video_name'])]
+        
+        # Concatenate remaining rows in existing_df with all rows in processed_df
+        updated_df = pd.concat([existing_df, processed_df], ignore_index=True)
     else:
-        return None
+        updated_df = processed_df
+
+    # Save the updated DataFrame to the output CSV file
+    if output_csv_file:
+        updated_df.to_csv(output_csv_file, index=False)
+
+    # Return the updated DataFrame
+    return updated_df
+
+
