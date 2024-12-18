@@ -93,7 +93,7 @@ def human_model_comparison(model_csv):
 
     # Extract question name to build column names
     question_name = df.loc[0, 'question_name']
-    model_score_column = f'model_score_{question_name}'
+    model_score_column = f'model_{question_name}_score'
     mean_human_score_column = f'mean_human_score_{question_name}'
 
     # List of columns to include in the correlation matrix, up to virtual_human_10

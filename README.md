@@ -25,23 +25,28 @@ Each prompt is carefully constructed to capture specific aspects of social inter
 
 \`\`\`python
 prompt['distance'] = """
-Here are several frames from a video. On a scale from 0 to 1, where 0 means physically touching and 1 means very far, how close are the people in this scene? Use the entire range, with intervals of 0.1. Provide the score as `<score> = X`.
+   Here are several frames from a video. On a scale from 0 to 1, where 0 means physically touching and 1 means very far, how close are the people in this scene? Provide a score using the entire range, with intervals of 0.1.
 
-Additionally, please provide a confidence score indicating how certain you are about this distance rating. On a scale from 0 to 1, where 0 means very low confidence and 1 means very high confidence, rate your certainty for the provided distance score. Provide the confidence score as `<confidence> = Y`.
+   Additionally, please provide a confidence score indicating how certain you are about this distance rating.
 
-Example 1:
-Scene: Two people are sitting side by side on a bench, their shoulders touching.
-Answer: <score> = 0.0
-Confidence: <confidence> = 0.9
+   Example 1:
+   Scene: Two people are sitting side by side on a bench, their shoulders touching.
+   Answer: <score> = 0.0
+   Confidence: <confidence> = 0.9
 
-Example 2:
-Scene: Two individuals are standing across a large room, not interacting.
-Answer: <score> = 1.0
-Confidence: <confidence> = 0.95
+   Example 2:
+   Scene: Two individuals are standing across a large room, not interacting.
+   Answer: <score> = 1.0
+   Confidence: <confidence> = 0.95
 
-Now, please estimate the score and confidence level for the scene in the provided images:
-Answer: <score> =
-Confidence: <confidence> =
+   Explain with two sentences why you gave this score and confidence level, especially if the difference is subtle.
+
+   Now, please estimate the score and confidence level for the scene in the provided images and return strictly in a JSON format:
+   {
+      "explanation": "",
+      "score": ,
+      "confidence": 
+   }
 """
 \`\`\`
 
@@ -50,6 +55,9 @@ Confidence: <confidence> =
 2. **Prompt Generation and Inference**: For each video, specific prompts are sent to the GPT model, designed to gather responses about social interactions and spatial context. 
 3. **Result Compilation**: Each annotation, including confidence scores, is compiled into a structured format, allowing for efficient data analysis and filtering.
 4. **Output Storage**: The annotated results are saved in a CSV file for further analysis, enabling insights into social interactions across the Moments in Time dataset.
+
+### Implementation
+The code supports both synchronous requests (annotate_videos.py) and asynchronous requests (annotate_videos_batch.py) using the OpenAI Batch API that has a lower cost.
 
 ### Benefits
 This project provides an efficient way to analyze and categorize social interactions in videos, leveraging powerful language models to understand nuanced human behaviors and environmental settings. The outputs can serve as a foundation for more extensive research or applications in social dynamics, multimedia analysis, and computer vision.

@@ -1,15 +1,8 @@
-Moments_in_Time_Raw/
-Moments_in_Time_Raw_PeopleCounts/
-MiT_dataset/
-LLaVa/
-archive llava1.5/
-archive llama/
-archive/
 __pycache__/
-social_data/
-tmp/
 *.csv
-tmp.py
 videos/
 scratch/
 human_annotations/
+venv_annotate/
+results/
+

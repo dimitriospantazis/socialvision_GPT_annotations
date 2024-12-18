@@ -92,88 +92,6 @@ def find_video_path(video_name, search_directory):
     return None
 
 
-def parse_model_responses(input_csv):
-    """
-    Loads a CSV file containing a DataFrame with 'model_response*' fields, 
-    extracts the score, confidence, people count, and indoor/outdoor information,
-    and adds them to corresponding new columns in the DataFrame only if they contain non-blank values.
-    Any completely empty columns are removed before saving.
-    
-    Parameters:
-    - input_csv: Path to the input CSV file.
-    
-    Returns:
-    - df: The modified DataFrame with new columns for each extracted field.
-    """
-    # Load the CSV file into a DataFrame
-    df = pd.read_csv(input_csv)
-
-    # Define a function to extract the required fields from the 'model_response*' column
-    def extract_fields(response):
-        # Remove any extra backslashes from the response string
-        response = response.replace('\\', '')
-
-        # Extract the score using regex
-        score_match = re.search(r'<score>\s*=\s*(\d+(\.\d+)?)', response)
-        score = float(score_match.group(1)) if score_match else None
-
-        # Extract the confidence using regex
-        confidence_match = re.search(r'<confidence>\s*=\s*(\d+(\.\d+)?)', response)
-        confidence = float(confidence_match.group(1)) if confidence_match else None
-
-        # Extract the people count using regex
-        people_count_match = re.search(r'<people_count>\s*=\s*(\d+\??)', response)
-        people_count = people_count_match.group(1) if people_count_match else None
-
-        # Extract indoor/outdoor using regex
-        indoor_outdoor_match = re.search(r'<indoor_outdoor>\s*=\s*(Indoor|Outdoor)', response)
-        indoor_outdoor = indoor_outdoor_match.group(1) if indoor_outdoor_match else None
-
-        # Extract indoor/outdoor confidence using regex
-        indoor_outdoor_confidence_match = re.search(r'<indoor_outdoor_confidence>\s*=\s*(\d+(\.\d+)?)', response)
-        indoor_outdoor_confidence = float(indoor_outdoor_confidence_match.group(1)) if indoor_outdoor_confidence_match else None
-
-        return score, confidence, people_count, indoor_outdoor, indoor_outdoor_confidence
-
-    # Iterate through all columns to find those that start with 'model_response'
-    for col in df.columns:
-        if col.startswith('model_response'):
-            # Extract the suffix from 'model_response<suffix>'
-            suffix = col[len('model_response'):]
-
-            # Define new columns for extracted fields
-            score_col = f'model_score{suffix}' if suffix != '_scene_analysis' else 'model_score_scene_analysis'
-            confidence_col = f'model_confidence{suffix}' if suffix != '_scene_analysis' else 'model_confidence_scene_analysis'
-            people_count_col = f'people_count{suffix}'
-
-            # Apply the extract_fields function to extract values
-            extracted_values = df[col].apply(lambda x: pd.Series(extract_fields(x)))
-            score, confidence, people_count, indoor_outdoor, indoor_outdoor_confidence = extracted_values.T.values
-
-            # Only add columns if they contain non-blank values
-            if not pd.isnull(score).all():
-                df[score_col] = score
-            if not pd.isnull(confidence).all():
-                df[confidence_col] = confidence
-            if not pd.isnull(people_count).all():
-                df[people_count_col] = people_count
-            if not pd.isnull(indoor_outdoor).all():
-                df['model_score_scene_analysis'] = indoor_outdoor
-            if not pd.isnull(indoor_outdoor_confidence).all():
-                df['model_confidence_scene_analysis'] = indoor_outdoor_confidence
-
-    # Remove any columns that are completely empty
-    df.dropna(axis=1, how='all', inplace=True)
-
-    # Sort the DataFrame by 'video_name' before saving
-    if 'video_name' in df.columns:
-        df.sort_values(by='video_name', inplace=True)
-
-    # Optionally, save the modified DataFrame to the same file or a new file
-    df.to_csv(input_csv, index=False)  # Uncomment if you want to save the result
-    
-    return df
-
 
 
 def merge_csv_columns(csv_files, output_file):
@@ -191,16 +109,15 @@ def merge_csv_columns(csv_files, output_file):
     """
     # List of columns to merge
     columns_to_merge = [
-        'model_score_expanse', 'model_confidence_expanse', 'expanse_videos',
-        'model_score_distance', 'model_confidence_distance', 'distance',
-        'model_score_arousal', 'model_confidence_arousal', 'arousal',
-        'model_score_communicating', 'model_confidence_communicating', 'communicating',
-        'model_score_cooperation', 'model_confidence_cooperation', 'cooperation',
-        'model_score_dominance', 'model_confidence_dominance', 'dominance',
-        'model_score_joint', 'model_confidence_joint', 'joint_videos',
-        'model_score_object', 'model_confidence_object', 'object',
-        'model_score_valence', 'model_confidence_valence', 'valence', 'model_score_facingness', 'model_confidence_facingness', 
-        'model_score_scene_analysis','model_confidence_scene_analysis','people_count_scene_analysis'
+        'model_distance_score', 'model_distance_confidence',
+        'model_object_score', 'model_object_confidence',
+        'model_expanse_score', 'model_expanse_confidence',
+        'model_facingness_score', 'model_facingness_confidence', 
+        'model_communicating_score', 'model_communicating_confidence',
+        'model_joint_score', 'model_joint_confidence',
+        'model_valence_score', 'model_valence_confidence',
+        'model_arousal_score', 'model_arousal_confidence',
+        'model_peoplecount','model_peoplecount_certain','model_location','model_location_confidence'
     ]
 
     # Create a list to store the dataframes
@@ -235,51 +152,5 @@ def merge_csv_columns(csv_files, output_file):
     merged_df.to_csv(output_file, index=False)
 
     return merged_df
-
-
-
-def videos_with_missing_scores(input_csv, videos_path=None):
-    """
-    Loads a CSV file into a DataFrame, identifies missing values in a 
-    column named 'model_score_<question>', and returns a list of 
-    'video_name' values corresponding to those missing entries.
-    
-    Parameters:
-    - input_csv: str, the path to the input CSV file.
-    
-    Returns:
-    - missing_video_names: list, containing 'video_name' values with missing 'model_score_<question>'.
-    """
-    # Load the CSV file into a DataFrame
-    df = pd.read_csv(input_csv)
-
-    # Extract the 'question' from the first row in the 'question' column
-    question_name = df['question_name'].iloc[0]
-
-    # Define the target column name based on the question value
-    target_column = f'model_score_{question_name}'
-
-    # Check if the target column exists
-    if target_column not in df.columns:
-        print(f"Column '{target_column}' does not exist in the data.")
-        return []
-
-    # Identify rows where 'model_score_<question>' has missing values
-    missing_rows = df[df[target_column].isna()]
-
-    # Extract 'video_name' values for rows with missing 'model_score_<question>'
-    missing_video_names = missing_rows['video_name'].tolist()
-
-    # Find the path of the missing videos
-    # Find paths in video_paths that match names in missing_video_names
-    if videos_path is not None:
-        missing_video_paths = [
-            path for path in videos_path
-            if os.path.splitext(os.path.basename(path))[0] in " ".join(missing_video_names)
-        ]
-    else:
-        missing_video_paths = None
-
-    return missing_video_names, missing_video_paths
 
 
