@@ -14,20 +14,17 @@ from utils_inference import create_jsonl_file, upload_jsonl_file, status_batch_j
 import time
 import pandas as pd
 
-
 # OpenAI key
 api_key = os.getenv("OPENAI_API_KEY")
 
-# Load videos paths   
+# Customize to load your videos 
 #videos_dir = os.path.join(os.getcwd(),'videos','human_annotated_videos_720')
 #type = 'structured_notcombined'
 #group = '720'
 #videos_path = find_videos(videos_dir)
 
 
-
-group = '2'
-for group in ['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20']:
+for group in ['1','2','3','4','5']:
     type = 'npeople2'
     videos_dir = os.path.join(os.getcwd(),'videos',f'{type}_training',group)
     videos_path = find_videos(videos_dir)
@@ -49,10 +46,11 @@ for group in ['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15',
         create_jsonl_file(chunk, prompts, output_jsonl_file=jsonlfile, model="gpt-4o-2024-08-06", num_frames=4, max_tokens=1500)
 
 
-group = '20'
-type = 'npeople2'
+
 
 # Upload jsonl files and create batch jobs
+group = '2'
+type = 'npeople2'
 file_id = {}
 for chunk_number in range(0,13):
     print(f'\nchunk number: {chunk_number}')
@@ -60,11 +58,6 @@ for chunk_number in range(0,13):
     file_id = upload_jsonl_file(api_key=api_key, filepath=jsonlfile, purpose="batch")
     time.sleep(2) # wait 2 seconds between uploads
     json_response = create_batch_job(api_key, file_id, record_file=f'task_{type}_{group}.txt')
-
-
-
-group = '20'
-type = 'npeople2'
 
 
 # Check status of batch jobs
@@ -88,12 +81,6 @@ for chunk_number in range(13):
 # Optional: Reset the index of the merged DataFrame after concatenation
 merged_df.reset_index(drop=True, inplace=True)
 merged_df.to_csv(f'task_{type}_{group}_results.csv', index=False)
-
-
-
-
-
-
 
 
 

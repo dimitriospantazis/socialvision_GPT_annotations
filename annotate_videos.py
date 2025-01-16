@@ -24,7 +24,7 @@ client = OpenAI(
 #group = '720'
 #videos_path = find_videos(videos_dir)
 
-
+# Customize to load your videos
 type = 'npeople2'
 group = '1'
 videos_dir = os.path.join(os.getcwd(),'videos',f'{type}_training',group)
@@ -32,8 +32,6 @@ videos_path = find_videos(videos_dir)
 
 # Load prompts
 prompts = get_prompts()
-
-
 
 # Dictionary to store output CSV file paths for each question_type
 output_files = {}
