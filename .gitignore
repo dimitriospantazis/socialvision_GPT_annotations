@@ -1,5 +1,4 @@
 __pycache__/
-*.csv
 videos/
 scratch/
 human_annotations/
